@@ -1,1 +1,565 @@
-# -renovation-demo
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>AI 裝修導航員</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+–bg: #f2ede8;
+–chat-bg: #faf8f5;
+–header-bg: #1c1a18;
+–ai-bubble: #ffffff;
+–user-bubble: #1c1a18;
+–user-text: #ffffff;
+–ai-text: #2a2420;
+–accent: #b8965a;
+–accent-light: #d4b07a;
+–border: #e0d8cf;
+–input-bg: #ffffff;
+–placeholder: #9a8f85;
+–muted: #7a6f65;
+}
+
+body {
+background: var(–bg);
+min-height: 100vh;
+display: flex;
+align-items: center;
+justify-content: center;
+font-family: ‘Noto Sans TC’, sans-serif;
+padding: 20px;
+}
+
+.phone {
+width: 100%;
+max-width: 420px;
+height: 90vh;
+max-height: 820px;
+background: var(–chat-bg);
+border-radius: 32px;
+box-shadow: 0 40px 100px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.5) inset;
+display: flex;
+flex-direction: column;
+overflow: hidden;
+}
+
+.header {
+background: var(–header-bg);
+padding: 18px 20px 16px;
+display: flex;
+align-items: center;
+gap: 14px;
+flex-shrink: 0;
+}
+
+.avatar-wrap { position: relative; }
+
+.avatar {
+width: 44px;
+height: 44px;
+background: linear-gradient(135deg, var(–accent), #8b6530);
+border-radius: 50%;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 22px;
+flex-shrink: 0;
+}
+
+.online {
+position: absolute;
+bottom: 1px; right: 1px;
+width: 10px; height: 10px;
+background: #4cd964;
+border-radius: 50%;
+border: 2px solid var(–header-bg);
+}
+
+.header-text h2 {
+font-family: ‘Noto Serif TC’, serif;
+font-size: 15px;
+font-weight: 600;
+color: #ffffff;
+letter-spacing: 0.5px;
+}
+
+.header-text p {
+font-size: 11px;
+color: #7a7068;
+margin-top: 3px;
+}
+
+.header-badge {
+margin-left: auto;
+background: rgba(184,150,90,0.15);
+border: 1px solid rgba(184,150,90,0.3);
+color: var(–accent-light);
+font-size: 10px;
+padding: 4px 10px;
+border-radius: 20px;
+}
+
+.messages {
+flex: 1;
+overflow-y: auto;
+padding: 24px 16px 12px;
+display: flex;
+flex-direction: column;
+gap: 18px;
+scroll-behavior: smooth;
+}
+.messages::-webkit-scrollbar { width: 0; }
+
+.msg-row {
+display: flex;
+gap: 10px;
+animation: msgIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes msgIn {
+from { opacity: 0; transform: translateY(12px) scale(0.95); }
+to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.msg-row.ai { align-items: flex-end; }
+.msg-row.user { flex-direction: row-reverse; }
+
+.msg-avatar {
+width: 30px; height: 30px;
+background: linear-gradient(135deg, var(–accent), #8b6530);
+border-radius: 50%;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 14px;
+flex-shrink: 0;
+}
+
+.bubble-wrap { display: flex; flex-direction: column; max-width: 78%; }
+.msg-row.user .bubble-wrap { align-items: flex-end; }
+
+.bubble {
+padding: 12px 16px;
+border-radius: 20px;
+font-size: 14px;
+line-height: 1.7;
+}
+
+.ai .bubble {
+background: var(–ai-bubble);
+color: var(–ai-text);
+border-bottom-left-radius: 6px;
+box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.user .bubble {
+background: var(–user-bubble);
+color: var(–user-text);
+border-bottom-right-radius: 6px;
+}
+
+.msg-time { font-size: 10px; color: var(–muted); margin-top: 5px; padding: 0 4px; }
+
+.typing {
+display: flex;
+align-items: center;
+gap: 5px;
+padding: 14px 16px;
+background: var(–ai-bubble);
+border-radius: 20px;
+border-bottom-left-radius: 6px;
+box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+width: fit-content;
+}
+
+.typing span {
+width: 7px; height: 7px;
+background: var(–accent);
+border-radius: 50%;
+animation: bounce 1.2s infinite;
+opacity: 0.6;
+}
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+0%, 60%, 100% { transform: translateY(0); opacity: 0.6; }
+30% { transform: translateY(-6px); opacity: 1; }
+}
+
+.divider {
+display: flex;
+align-items: center;
+gap: 10px;
+color: var(–muted);
+font-size: 11px;
+}
+.divider::before, .divider::after {
+content: ‘’;
+flex: 1;
+height: 1px;
+background: var(–border);
+}
+
+.quick-replies { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+
+.quick-btn {
+background: transparent;
+border: 1px solid var(–accent);
+color: var(–accent);
+padding: 7px 14px;
+border-radius: 20px;
+font-size: 12.5px;
+font-family: ‘Noto Sans TC’, sans-serif;
+cursor: pointer;
+transition: all 0.2s;
+}
+.quick-btn:hover, .quick-btn:active { background: var(–accent); color: white; }
+
+.input-area {
+padding: 12px 16px 20px;
+background: var(–chat-bg);
+border-top: 1px solid var(–border);
+flex-shrink: 0;
+}
+
+.input-row { display: flex; gap: 10px; align-items: flex-end; }
+
+textarea {
+flex: 1;
+background: var(–input-bg);
+border: 1.5px solid var(–border);
+border-radius: 22px;
+padding: 12px 16px;
+font-size: 14px;
+font-family: ‘Noto Sans TC’, sans-serif;
+color: var(–ai-text);
+resize: none;
+outline: none;
+max-height: 100px;
+line-height: 1.5;
+transition: border-color 0.2s;
+}
+textarea::placeholder { color: var(–placeholder); }
+textarea:focus { border-color: var(–accent); }
+
+.send-btn {
+width: 44px; height: 44px;
+background: var(–header-bg);
+border: none;
+border-radius: 50%;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+flex-shrink: 0;
+transition: all 0.2s;
+}
+.send-btn:hover { background: var(–accent); transform: scale(1.05); }
+.send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.send-btn svg { width: 18px; height: 18px; fill: white; }
+
+.hint { text-align: center; font-size: 10px; color: var(–muted); margin-top: 10px; }
+
+.setup-overlay {
+position: fixed;
+inset: 0;
+background: rgba(28,26,24,0.85);
+display: flex;
+align-items: center;
+justify-content: center;
+z-index: 100;
+padding: 20px;
+backdrop-filter: blur(4px);
+}
+
+.setup-card {
+background: var(–chat-bg);
+border-radius: 24px;
+padding: 32px 28px;
+max-width: 360px;
+width: 100%;
+box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+}
+
+.logo-mark {
+font-family: ‘Noto Serif TC’, serif;
+font-size: 13px;
+color: var(–accent);
+letter-spacing: 2px;
+margin-bottom: 20px;
+display: block;
+}
+
+.setup-card h2 {
+font-family: ‘Noto Serif TC’, serif;
+font-size: 20px;
+color: var(–ai-text);
+margin-bottom: 8px;
+}
+
+.setup-card p {
+font-size: 13px;
+color: var(–muted);
+line-height: 1.7;
+margin-bottom: 20px;
+}
+
+.setup-input {
+width: 100%;
+border: 1.5px solid var(–border);
+border-radius: 12px;
+padding: 12px 16px;
+font-size: 13px;
+font-family: monospace;
+color: var(–ai-text);
+outline: none;
+margin-bottom: 14px;
+background: white;
+transition: border-color 0.2s;
+}
+.setup-input:focus { border-color: var(–accent); }
+
+.setup-btn {
+width: 100%;
+background: var(–header-bg);
+color: white;
+border: none;
+border-radius: 12px;
+padding: 14px;
+font-size: 14px;
+font-family: ‘Noto Sans TC’, sans-serif;
+cursor: pointer;
+transition: background 0.2s;
+}
+.setup-btn:hover { background: var(–accent); }
+</style>
+
+</head>
+<body>
+
+<div class="setup-overlay" id="setupOverlay">
+  <div class="setup-card">
+    <span class="logo-mark">AI 裝修導航員</span>
+    <h2>輸入 API Key</h2>
+    <p>貼上你的 Anthropic API key，即可開始體驗 AI 裝修顧問對話流程。</p>
+    <input class="setup-input" id="apiKeyInput" type="password" placeholder="sk-ant-api03-..." />
+    <button class="setup-btn" onclick="startDemo()">開始體驗</button>
+  </div>
+</div>
+
+<div class="phone">
+  <div class="header">
+    <div class="avatar-wrap">
+      <div class="avatar">🏠</div>
+      <div class="online"></div>
+    </div>
+    <div class="header-text">
+      <h2>AI 裝修導航員</h2>
+      <p>專業規劃 · 自辦發包輔助</p>
+    </div>
+    <div class="header-badge">BETA</div>
+  </div>
+
+  <div class="messages" id="messages">
+    <div class="divider">今天</div>
+  </div>
+
+  <div class="input-area">
+    <div id="quickReplies" class="quick-replies"></div>
+    <div class="input-row">
+      <textarea id="userInput" placeholder="輸入您的問題..." rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+    <div class="hint">AI 回覆僅供參考，實際規劃以專業評估為準</div>
+  </div>
+</div>
+
+<script>
+let apiKey = '';
+let conversationHistory = [];
+let messageCount = 0;
+
+const SYSTEM_PROMPT = `你是「AI裝修導航員」，一位專業的室內裝修顧問。你的服務對象是想要自辦發包裝修、已有工班師父、但需要專業平面規劃與施工圖的業主。
+
+【核心任務】
+了解業主的空間狀況（坪數、格局、屋況）、生活習慣與需求、預算範圍、已有哪些工班，最終引導他們使用平面規劃與施工圖服務。
+
+【對話風格演進 - 非常重要】
+- 第1-3則：專業、有禮、稍有距離感，像初次見面的顧問
+- 第4-6則：語氣漸漸放鬆，開始用較輕鬆的詞彙，像認識一陣子的朋友
+- 第7則之後：更像老朋友在聊，可以適當輕鬆，但保持專業內涵
+
+【原則】
+- 每次只問一個問題
+- 記住業主說的細節並自然帶入後續對話
+- 不要急著推銷，先真正理解需求
+- 回覆簡短自然，像真實對話
+- 用繁體中文，台灣用語
+
+【服務（適當時機介紹）】
+- 平面規劃圖：$300-500
+- 施工圖（全人工）：依坪數報價
+- 丈量媒合：$3,000-5,000
+- 每階段獨立收費，不滿意可隨時停止`;
+
+function startDemo() {
+  const input = document.getElementById('apiKeyInput').value.trim();
+  if (!input.startsWith('sk-ant-')) {
+    alert('請輸入正確的 Anthropic API key');
+    return;
+  }
+  apiKey = input;
+  document.getElementById('setupOverlay').style.display = 'none';
+  initChat();
+}
+
+async function initChat() {
+  await callAI([{ role: 'user', content: '你好，我想了解裝修相關服務' }], true);
+}
+
+function getTime() {
+  return new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+}
+
+function addMessage(role, text) {
+  const messages = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.className = `msg-row ${role}`;
+
+  if (role === 'ai') {
+    row.innerHTML = `
+      <div class="msg-avatar">🏠</div>
+      <div class="bubble-wrap">
+        <div class="bubble">${text.replace(/\n/g, '<br>')}</div>
+        <div class="msg-time">${getTime()}</div>
+      </div>`;
+  } else {
+    row.innerHTML = `
+      <div class="bubble-wrap">
+        <div class="bubble">${text.replace(/\n/g, '<br>')}</div>
+        <div class="msg-time">${getTime()}</div>
+      </div>`;
+  }
+
+  messages.appendChild(row);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function showTyping() {
+  const messages = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.className = 'msg-row ai';
+  row.id = 'typingRow';
+  row.innerHTML = `<div class="msg-avatar">🏠</div><div class="typing"><span></span><span></span><span></span></div>`;
+  messages.appendChild(row);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function hideTyping() {
+  const t = document.getElementById('typingRow');
+  if (t) t.remove();
+}
+
+function setQuickReplies(replies) {
+  const container = document.getElementById('quickReplies');
+  container.innerHTML = '';
+  replies.forEach(r => {
+    const btn = document.createElement('button');
+    btn.className = 'quick-btn';
+    btn.textContent = r;
+    btn.onclick = () => {
+      document.getElementById('userInput').value = r;
+      sendMessage();
+    };
+    container.appendChild(btn);
+  });
+}
+
+function getQuickReplies() {
+  if (messageCount <= 2) return ['新成屋裝修', '中古屋翻新', '只需要施工圖', '想先了解費用'];
+  if (messageCount <= 5) return ['預算100萬以內', '已有師父班底', '需要全部工班', '先看看再說'];
+  return [];
+}
+
+async function callAI(messages, isInit = false) {
+  const sendBtn = document.getElementById('sendBtn');
+  sendBtn.disabled = true;
+  showTyping();
+
+  try {
+    const systemWithCount = SYSTEM_PROMPT + `\n\n【當前是第 ${messageCount + 1} 則對話，請依風格演進規則調整語氣】`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 800,
+        system: systemWithCount,
+        messages: messages
+      })
+    });
+
+    const data = await response.json();
+    hideTyping();
+
+    if (data.content && data.content[0]) {
+      const aiText = data.content[0].text;
+      conversationHistory.push({ role: 'assistant', content: aiText });
+      messageCount++;
+      addMessage('ai', aiText);
+      setQuickReplies(getQuickReplies());
+    } else {
+      addMessage('ai', '抱歉，暫時有點問題，請稍後再試。');
+    }
+  } catch (err) {
+    hideTyping();
+    addMessage('ai', '連線暫時中斷，請稍後再試。');
+    console.error(err);
+  }
+
+  sendBtn.disabled = false;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text || !apiKey) return;
+
+  document.getElementById('quickReplies').innerHTML = '';
+  addMessage('user', text);
+  input.value = '';
+  input.style.height = 'auto';
+
+  conversationHistory.push({ role: 'user', content: text });
+  await callAI(conversationHistory);
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+</script>
+
+</body>
+</html>
